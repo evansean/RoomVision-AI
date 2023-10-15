@@ -2,8 +2,11 @@ import streamlit as st
 import json
 import base64
 import requests
+import hydralit_components as hc
+import time
 
-server_url = "https://66da919bc6c56f8b70.gradio.live"
+server_url = "https://a477be354b1a4a1484.gradio.live"
+
 
 def sketch(prompt, base64_image):
     
@@ -15,6 +18,7 @@ def sketch(prompt, base64_image):
 
     payload = json.dumps({
         "prompt": prompt,
+        "negative_prompt": "text, close up, cropped, out of frame, worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck, watermark",
         "init_images": [base64_image],
         "sampler_name": "DPM++ 2M Karras",
         "steps": 20,
@@ -22,7 +26,7 @@ def sketch(prompt, base64_image):
         "width": 512,
         "height": 512,
         "batch_size": 4,
-        "seed": -1,
+        "seed": 10948394,
         "denoising_strength": 0.75,
         "override_settings": {
             "sd_model_checkpoint": "realisticVisionV51_v20Novae.safetensors [c0d1994c73]"
@@ -63,6 +67,7 @@ def interior(prompt, base64_image):
 
     payload = json.dumps({
         "prompt": prompt,
+        "negative_prompt": "text, close up, cropped, out of frame, worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck, watermark",
         "init_images": [base64_image],
         "sampler_name": "DPM++ 2M Karras",
         "steps": 20,
@@ -156,7 +161,6 @@ lower_container = st.container()
 with lower_container:
     col1, col2 = st.columns(2)
     pictype = ""
-
     with col1:
         image_type = st.radio("Input type", ["Sketch","Image of an interior"])
         if image_type == "Sketch":
@@ -166,7 +170,7 @@ with lower_container:
         uploaded_image = st.file_uploader(f"Upload {pictype}", type=["jpg", "png", "jpeg"], disabled=False,label_visibility="visible")
         if uploaded_image is not None:
             st.image(uploaded_image, use_column_width=True)
-
+         
     # Initial image URLs
     image_urls = [
         "https://designclinic.sg/wp-content/uploads/2017/02/Untitled-design-23.png",
@@ -179,27 +183,32 @@ with lower_container:
     # display_generated_images(image_urls)
 
     with col2:
-        st.write("Generated Designs")
+        st.header("Generated Designs")
+        
 
 with upper_container:
-    input_col, button_col = st.columns([0.9,0.1])
+    input_col, button_col = st.columns([0.6,0.4])
     
     with input_col:
         prompt = st.text_input("What are your desired design requirements?", placeholder="Bohemian interior design style with a hint of greenery")
 
     with button_col:
-        if st.button("Generate", type="primary"):
-            if uploaded_image is not None:
-                image_content = uploaded_image.getvalue()
-                base64_image = base64.b64encode(image_content).decode("utf-8")
-                if image_type == "Sketch":
-                    image_urls = sketch(prompt, base64_image)
+        fil_col, but_col = st.columns([0.7,0.3])
+        with but_col:
+            if st.button("Generate", type="primary"):
+                if uploaded_image is not None:
+                    image_content = uploaded_image.getvalue()
+                    base64_image = base64.b64encode(image_content).decode("utf-8")
+                    if image_type == "Sketch":
+                        image_urls = sketch(prompt, base64_image)
+                    else:
+                        image_urls = interior(prompt, base64_image)
+                    # Refresh images after clicking "Generate"
+                    display_generated_images(image_urls)
                 else:
-                    image_urls = interior(prompt, base64_image)
-                # Refresh images after clicking "Generate"
-                display_generated_images(image_urls)
-            else:
-                print("Please upload an image")
+                    st.error('Please upload an image', icon="🚨")
+
+                    print("Please upload an image")
 
 def refinePrompt(prompt):
     refinedPrompt = ""
