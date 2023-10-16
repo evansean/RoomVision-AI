@@ -1,1 +1,2 @@
-# AI-Interior-Design
+# RoomVision-AI
+Your Virtual Interior Designer
