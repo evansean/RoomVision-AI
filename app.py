@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import base64
 import requests
-import hydralit_components as hc
+#import hydralit_components as hc
 import openai
 
 st.set_page_config(layout="wide",page_title="RoomVision AI")
