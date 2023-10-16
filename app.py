@@ -3,10 +3,17 @@ import json
 import base64
 import requests
 import hydralit_components as hc
-import time
+import openai
 
-server_url = "https://a477be354b1a4a1484.gradio.live"
+st.set_page_config(layout="wide",page_title="RoomVision AI")
+st.title("RoomVision AI, Your Virtual Interior Designer")
 
+server_url = "https://0484c631dab56aa110.gradio.live"
+
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+#messages = [
+  #  {"role":"system", "content": "You are an interior designer"}
+#]
 
 def sketch(prompt, base64_image):
     
@@ -52,8 +59,8 @@ def sketch(prompt, base64_image):
 
     images = response.json()["images"]
 
-    print(response)
-    print(response.json()['info'])
+    #print(response)
+    #print(response.json()['info'])
 
     return images
 
@@ -86,7 +93,7 @@ def interior(prompt, base64_image):
                     {
                         "input_image": base64_image,
                         "module": "segmentation",
-                        "model": "control_v11p_sd15_seg [e1f51eb9]",
+                        "model": "control_v11p_sd15_seg [e1f51eb9]", #diffusion_pytorch_model
                         "weight": 1.0,
                         "guidance_start": 0.0,
                         "guidance_end": 1.0,
@@ -110,17 +117,14 @@ def interior(prompt, base64_image):
 
     images = response.json()["images"]
 
-    print(response)
-    print(response.json()['info'])
+    #print(response)
+    #print(response.json()['info'])
 
     return images
 
 
 
-st.set_page_config(layout="wide",page_title="AI Interior Designer")
 
-
-st.title("AI Interior Designer")
 
 def display_generated_images(image_urls):
     image_url = image_urls[0]
@@ -152,7 +156,22 @@ def display_generated_images(image_urls):
                 st.image(f"data:image/png;base64,{image_urls[2]}", use_column_width=True)
                 st.image(f"data:image/png;base64,{image_urls[3]}", use_column_width=True)
 
-
+def refinePrompt(prompt):
+    set_prompt = ""
+    refinedPrompt = ""
+    messages = [
+    {"role":"system", "content": "You are an interior designer that takes design requirements from clients and outputs 1 prompt for DALL-E, in only 50 words. a prompt means a very short description of the scene, followed by modifiers divided by commas to alter the mood, style, atmosphere, lighting, and more. the prompt must include the interior room type, interior design styles, details of the furniture, color schemes, atmosphere and other decorative options that best suit said theme/design approach in order to enhance aesthetics"}
+    ]
+    messages.append(
+        {"role": "user", "content": prompt}
+    )
+    
+    chat = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo", messages= messages
+    )
+    refinedPrompt = chat.choices[0].message.content
+    print(refinedPrompt)
+    return refinedPrompt
 
 upper_container = st.container()
 lower_container = st.container()
@@ -190,27 +209,24 @@ with upper_container:
     input_col, button_col = st.columns([0.6,0.4])
     
     with input_col:
-        prompt = st.text_input("What are your desired design requirements?", placeholder="Bohemian interior design style with a hint of greenery")
+        prompt = st.text_input("What are your desired design requirements? :gray[(*Enhanced by ChatGPT*)] :bulb:", placeholder="Specify the type of room, and describe your desired design in natural language")
 
     with button_col:
         fil_col, but_col = st.columns([0.7,0.3])
         with but_col:
             if st.button("Generate", type="primary"):
                 if uploaded_image is not None:
+                    refined_prompt = refinePrompt(prompt)
                     image_content = uploaded_image.getvalue()
                     base64_image = base64.b64encode(image_content).decode("utf-8")
                     if image_type == "Sketch":
-                        image_urls = sketch(prompt, base64_image)
+                        image_urls = sketch(refined_prompt +"photorealistic, CANNON, 4k", base64_image)
                     else:
-                        image_urls = interior(prompt, base64_image)
+                        image_urls = interior(refined_prompt+"photorealistic, CANNON, 4k", base64_image)
                     # Refresh images after clicking "Generate"
                     display_generated_images(image_urls)
                 else:
                     st.error('Please upload an image', icon="🚨")
 
-                    print("Please upload an image")
+                    #print("Please upload an image")
 
-def refinePrompt(prompt):
-    refinedPrompt = ""
-    
-    return refinedPrompt
