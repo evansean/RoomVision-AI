@@ -8,7 +8,7 @@ import openai
 st.set_page_config(layout="wide",page_title="RoomVision AI")
 st.title("RoomVision AI, Your Virtual Interior Designer")
 
-server_url = "https://0484c631dab56aa110.gradio.live"
+server_url = st.secrets["sdwebui"]
 
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 #messages = [
