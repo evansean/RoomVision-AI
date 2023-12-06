@@ -3,29 +3,24 @@ import json
 import base64
 import requests
 #import hydralit_components as hc
-import openai
+from openai import OpenAI
 
 st.set_page_config(layout="wide",page_title="RoomVision AI")
 st.title("RoomVision AI, Your Virtual Interior Designer")
 
 server_url = st.secrets["sdwebui"]
-
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-#messages = [
-  #  {"role":"system", "content": "You are an interior designer"}
-#]
+client = OpenAI(
+    api_key = st.secrets["OPENAI_API_KEY"]
+)
 
 def sketch(prompt, base64_image):
-    
     url = server_url + "/sdapi/v1/img2img"
-
     headers = {
         'Content-Type': 'application/json',
     }
-
     payload = json.dumps({
         "prompt": prompt,
-        "negative_prompt": "text, close up, cropped, out of frame, worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck, watermark",
+        "negative_prompt": "text, close up, cropped, out of frame, worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck, watermark, sunlight",
         "init_images": [base64_image],
         "sampler_name": "DPM++ 2M Karras",
         "steps": 20,
@@ -41,6 +36,7 @@ def sketch(prompt, base64_image):
         "alwayson_scripts": {
             "controlnet": {
                 "args": [
+                    
                     {
                         "input_image": base64_image,
                         "module": "mlsd",
@@ -54,24 +50,15 @@ def sketch(prompt, base64_image):
             }
         }
     })
-
     response = requests.request("POST", url, data=payload, headers=headers)
-
     images = response.json()["images"]
-
-    #print(response)
-    #print(response.json()['info'])
-
     return images
 
 def interior(prompt, base64_image):
-
     url = server_url + "/sdapi/v1/img2img"
-
     headers = {
         'Content-Type': 'application/json',
     }
-
     payload = json.dumps({
         "prompt": prompt,
         "negative_prompt": "text, close up, cropped, out of frame, worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck, watermark",
@@ -79,8 +66,8 @@ def interior(prompt, base64_image):
         "sampler_name": "DPM++ 2M Karras",
         "steps": 20,
         "cfg_scale": 7,
-        "width": 512,
-        "height": 512,
+        "width": 768,
+        "height": 768,
         "batch_size": 4,
         "seed": -1,
         "denoising_strength": 0.75,
@@ -93,7 +80,7 @@ def interior(prompt, base64_image):
                     {
                         "input_image": base64_image,
                         "module": "segmentation",
-                        "model": "control_v11p_sd15_seg [e1f51eb9]", #diffusion_pytorch_model
+                        "model": "control_v11p_sd15_seg [e1f51eb9]", #diffusion_pytorch_model, 
                         "weight": 1.0,
                         "guidance_start": 0.0,
                         "guidance_end": 1.0,
@@ -112,14 +99,9 @@ def interior(prompt, base64_image):
             }
         }
     })
-
     response = requests.request("POST", url, data=payload, headers=headers)
 
     images = response.json()["images"]
-
-    #print(response)
-    #print(response.json()['info'])
-
     return images
 
 
@@ -130,7 +112,6 @@ def display_generated_images(image_urls):
     image_url = image_urls[0]
     if image_url.endswith(".png"):
         with col2:
-            # st.write("Generated Designs")
             genupp_container, genlow_container = st.columns(2)
             
             # Display images in a grid
@@ -141,10 +122,8 @@ def display_generated_images(image_urls):
             with genlow_container:
                 st.image(image_urls[2], use_column_width=True)
                 st.image(image_urls[3], use_column_width=True)
-
     else:
         with col2:
-            # st.write("Generated Designs")
             genupp_container, genlow_container = st.columns(2)
             
             # Display images in a grid
@@ -157,20 +136,26 @@ def display_generated_images(image_urls):
                 st.image(f"data:image/png;base64,{image_urls[3]}", use_column_width=True)
 
 def refinePrompt(prompt):
-    set_prompt = ""
     refinedPrompt = ""
     messages = [
-    {"role":"system", "content": "You are an interior designer that takes design requirements from clients and outputs 1 prompt for DALL-E, in only 50 words. a prompt means a very short description of the scene, followed by modifiers divided by commas to alter the mood, style, atmosphere, lighting, and more. the prompt must include the interior room type, interior design styles, details of the furniture, color schemes, atmosphere and other decorative options that best suit said theme/design approach in order to enhance aesthetics"}
+    {"role":"system", "content":''' "You are an interior designer that takes design requirements 
+     from clients and outputs 1 prompt for DALL-E, in only 50 words. a prompt means a 
+     very short description of the scene, followed by modifiers divided by commas to alter the 
+     mood, style, atmosphere, lighting, and more. the prompt must start with the interior design style that best fits the client's design preference
+     followed by the words 'interior design style', use interior design terminology and include 
+     the interior room type, 'interior design styles', details of the furniture, color schemes, 
+     atmosphere and other decorative options that best suit said theme/design approach in order 
+     to enhance aesthetics"'''}
     ]
     messages.append(
         {"role": "user", "content": prompt}
     )
-    
-    chat = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo", messages= messages
-    )
+    chat = client.chat.completions.create(model="gpt-3.5-turbo", messages= messages)
+    # chat = openai.ChatCompletion.create(
+    #     model="gpt-3.5-turbo", messages= messages
+    # )
     refinedPrompt = chat.choices[0].message.content
-    print(refinedPrompt)
+    #print(refinedPrompt)
     return refinedPrompt
 
 upper_container = st.container()
@@ -209,24 +194,26 @@ with upper_container:
     input_col, button_col = st.columns([0.6,0.4])
     
     with input_col:
-        prompt = st.text_input("What are your desired design requirements? :gray[(*Enhanced by ChatGPT*)] :bulb:", placeholder="Specify the type of room, and describe your desired design in natural language")
+        prompt = st.text_input("What are your aesthetic design requirements? :gray[(*Enhanced by ChatGPT*)] :bulb:", placeholder="Specify the type of room, and describe your desired design in natural language")
 
     with button_col:
-        fil_col, but_col = st.columns([0.7,0.3])
+        fil_col, but_col = st.columns([0.6,0.4])
         with but_col:
             if st.button("Generate", type="primary"):
                 if uploaded_image is not None:
-                    refined_prompt = refinePrompt(prompt)
-                    image_content = uploaded_image.getvalue()
-                    base64_image = base64.b64encode(image_content).decode("utf-8")
-                    if image_type == "Sketch":
-                        image_urls = sketch(refined_prompt +"photorealistic, CANNON, 4k", base64_image)
+                    if prompt:
+                        refined_prompt = refinePrompt(prompt)
+                        print(refined_prompt)
+
+                        image_content = uploaded_image.getvalue()
+                        base64_image = base64.b64encode(image_content).decode("utf-8")
+                        if image_type == "Sketch":
+                            image_urls = sketch(refined_prompt +"photorealistic, CANNON, 4k", base64_image)
+                        else:
+                            image_urls = interior(refined_prompt+"photorealistic, CANNON, 4k", base64_image)
+                        # Refresh images after clicking Generate"
+                        display_generated_images(image_urls)
                     else:
-                        image_urls = interior(refined_prompt+"photorealistic, CANNON, 4k", base64_image)
-                    # Refresh images after clicking "Generate"
-                    display_generated_images(image_urls)
+                        st.error('Please provide a description', icon="🚨")
                 else:
                     st.error('Please upload an image', icon="🚨")
-
-                    #print("Please upload an image")
-
